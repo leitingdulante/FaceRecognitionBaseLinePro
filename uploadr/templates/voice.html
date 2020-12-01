@@ -1,0 +1,117 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>语音素材采集</title>
+<meta charset="utf-8" />
+</head>
+<body>
+<h1>语音素材采集</h1>
+<button onclick="funStart(this);" id="btnStart" disabled>录制</button>
+<button onclick="funStop(this);" id="btnStop" disabled>停止</button>
+<div>请输入录入的语音对应拼音,下划线分隔 eg: zheng_shan_shuang</div>
+<input id="pinyin"/>
+<button onclick="funUpload(this);" id="btnUpload" disabled>提交</button>
+<div id="toastView"></div>
+<h4>调试信息：</h4>
+<div id="recordingslist"></div>
+<script type="text/javascript" src="{{ url_for('static', filename='js/jquery-2.1.1.min.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/recordmp3.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/uploadr.js') }}"></script>
+<script>
+	var recorder = new MP3Recorder({
+		debug:true,
+		funOk: function () {
+			btnStart.disabled = false;
+			log('初始化成功');
+		},
+		funCancel: function (msg) {
+			log(msg);
+			recorder = null;
+		}
+	});
+	var mp3Blob;
+
+
+	function funStart(button) {
+		btnStart.disabled = true;
+		btnStop.disabled = false;
+		btnUpload.disabled = true;
+		log('录音开始...');
+		recorder.start();
+	}
+
+	function funStop(button) {
+		recorder.stop();
+		btnStart.disabled = false;
+		btnStop.disabled = true;
+		btnUpload.disabled = false;
+		log('录音结束，MP3导出中...');
+		recorder.getMp3Blob(function (blob) {
+			log('MP3导出成功');
+
+			mp3Blob = blob;
+			var url = URL.createObjectURL(mp3Blob);
+			var div = document.createElement('div');
+			var au = document.createElement('audio');
+			var hf = document.createElement('a');
+
+			au.controls = true;
+			au.src = url;
+			hf.href = url;
+			hf.download = new Date().toISOString() + '.mp3';
+			hf.innerHTML = hf.download;
+			div.appendChild(au);
+			div.appendChild(hf);
+			recordingslist.appendChild(div);
+		});
+	}
+
+	function log(str) {
+		recordingslist.innerHTML += str + '<br/>';
+	}
+
+	function funUpload() {
+	    var names = $("#pinyin").val();
+	    if (!names || names === "") {
+	        toast("请输入拼音");
+	        return;
+        }
+        voiceUpload(names, mp3Blob)
+	}
+	function voiceUpload(names, mp3data) {
+        var fd = new FormData();
+        fd.append('names', names);
+        fd.append('file', mp3data);
+        fd.append("__ajax", "true");
+        $.ajax({
+            url: "/voiceRecord",
+            method: "POST",
+            contentType: false,
+            processData: false,
+            cache: false,
+            data: fd,
+            success: function(data) {
+                data = JSON.parse(data);
+                if (data.status === "ok") {
+                    toast("提交成功");
+                } else {
+                    toast("提交失败,请重试");
+                }
+            }
+        });
+    }
+    function toast(msg) {
+        $("#toastView").text(msg)
+        console.log(msg)
+        setTimeout(function () {
+            $("#toastView").text("")
+        }, 1000)
+    }
+</script>
+<p>作者：北航小分队</p>
+{#zhao_qian_sun_li_zhou_wu_zheng_wang_xian_sheng_lao_shi_jiao_shou_huan_ying_ni#}
+{#lu_han_xiao_ran_yi_fan#}
+</div>
+</body>
+</html>
